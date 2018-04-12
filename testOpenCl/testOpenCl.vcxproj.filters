@@ -49,11 +49,11 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Intel_OpenCL_Build_Rules Include="copyImg.cl">
+    <None Include="preprocess.cl">
       <Filter>OpenCL Files</Filter>
-    </Intel_OpenCL_Build_Rules>
-    <Intel_OpenCL_Build_Rules Include="preprocess.cl">
+    </None>
+    <None Include="copyImg.cl">
       <Filter>OpenCL Files</Filter>
-    </Intel_OpenCL_Build_Rules>
+    </None>
   </ItemGroup>
 </Project>

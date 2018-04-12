@@ -140,7 +140,9 @@ int main() {
 		getchar();
 		exit(1);
 	}
-	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, nullptr, &clError);
+	const unsigned outWidth = width / 4;
+	const unsigned outHeight = height / 4;
+	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_INTENSITY, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
 	if (clError != 0) {
 		std::cout << "could not create openCL image for output error: " << clError << std::endl;
 		getchar();
@@ -164,7 +166,7 @@ int main() {
 	kernel.setArg(0, clInImg);
     kernel.setArg(1, clOutImg);
 	cl::CommandQueue queue(clCtx);
-    clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(width, height), cl::NullRange);
+    clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
 	if (clError != 0) {
 		std::cout << "cannot add kernel to command queue: " << clError << std::endl;
 		getchar();
@@ -174,8 +176,8 @@ int main() {
 
 	std::vector<float> processedImage(pixels.size());
 	cl::size_t<3> size;
-	size[0] = width;
-	size[1] = height;
+	size[0] = outWidth;
+	size[1] = outHeight;
 	size[2] = 1;
 	clError = queue.enqueueReadImage(clOutImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	if (clError != 0) {
@@ -190,7 +192,7 @@ int main() {
 		outputImage[i] = static_cast<uint8_t>(processedImage[i]);
 	}
 
-	error = lodepng::encode("out.png", outputImage, width, height, LCT_GREY, 8);
+	error = lodepng::encode("out.png", outputImage, outWidth, outHeight, LCT_GREY, 8);
 	if (error != 0) {
 		std::cout << "cannot save image file" << std::endl;
 		getchar();
