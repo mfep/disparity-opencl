@@ -93,7 +93,7 @@ cl::Context initCl() {
         std::cout<<" No platforms found. Check OpenCL installation!\n";
         exit(1);
     }
-    cl::Platform default_platform=all_platforms[0];
+    cl::Platform default_platform=all_platforms[1];
     std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
 
     //get default device of the default platform
@@ -142,7 +142,7 @@ int main() {
 	}
 	const unsigned outWidth = width / 4;
 	const unsigned outHeight = height / 4;
-	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_INTENSITY, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
+	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
 	if (clError != 0) {
 		std::cout << "could not create openCL image for output error: " << clError << std::endl;
 		getchar();
