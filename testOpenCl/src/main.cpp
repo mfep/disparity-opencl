@@ -126,9 +126,9 @@ std::string readFile(const char* filename) {
 int main() {
 	std::vector<uint8_t> pixels;
 	unsigned width, height;
-	unsigned error = lodepng::decode(pixels, width, height, "imtest.png", LCT_RGBA);
+	unsigned error = lodepng::decode(pixels, width, height, "im0.png", LCT_RGBA);
 	if (error != 0) {
-		std::cout << "cannot read in imtest.png" << std::endl;
+		std::cout << "cannot read in im0.png" << std::endl;
 		getchar();
 		exit(1);
 	}
@@ -140,14 +140,14 @@ int main() {
 		getchar();
 		exit(1);
 	}
-	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, nullptr, &clError);
+	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_INTENSITY, CL_FLOAT), width, height, 0, nullptr, &clError);
 	if (clError != 0) {
 		std::cout << "could not create openCL image for output error: " << clError << std::endl;
 		getchar();
 		exit(1);
 	}
 
-	auto programText = readFile("copyImg.cl");
+	auto programText = readFile("preprocess.cl");
 	cl::Program program(clCtx, programText);
 	clError = program.build();
 	if (clError != 0) {
@@ -155,7 +155,7 @@ int main() {
 		getchar();
 		exit(1);
 	}
-	cl::Kernel kernel(program, "copyImg", &clError);
+	cl::Kernel kernel(program, "preprocess", &clError);
 	if (clError != 0) {
 		std::cout << "initialize cl::Kernel: " << clError << std::endl;
 		getchar();
@@ -172,7 +172,7 @@ int main() {
 	}
 	queue.finish();
 
-	std::vector<uint8_t> processedImage(pixels.size());
+	std::vector<float> processedImage(pixels.size());
 	cl::size_t<3> size;
 	size[0] = width;
 	size[1] = height;
@@ -185,7 +185,12 @@ int main() {
 	}
     queue.finish();
 
-	error = lodepng::encode("out.png", processedImage, width, height, LCT_RGBA, 8);
+	std::vector<uint8_t> outputImage(processedImage.size());
+	for (size_t i = 0; i < processedImage.size(); i++) {
+		outputImage[i] = static_cast<uint8_t>(processedImage[i]);
+	}
+
+	error = lodepng::encode("out.png", outputImage, width, height, LCT_GREY, 8);
 	if (error != 0) {
 		std::cout << "cannot save image file" << std::endl;
 		getchar();
