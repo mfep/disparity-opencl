@@ -8,6 +8,9 @@
 #include "Logger.hpp"
 
 
+constexpr int WINDOW = 9;
+
+
 void testCl() {
 	//get all platforms (drivers)
     std::vector<cl::Platform> all_platforms;
@@ -134,50 +137,80 @@ void error_quit_program(T error) {
 
 
 int main() {
+	// load input image
 	std::vector<uint8_t> pixels;
 	unsigned width, height;
 	unsigned error = lodepng::decode(pixels, width, height, "im0.png", LCT_RGBA);
 	Logger::logLoad(error, "im0.png");
 	error_quit_program(error);
 
+	// create OpenCL image from input image
 	auto clCtx = initCl();
+	cl::CommandQueue queue(clCtx);
 	int clError = 0;
 	cl::Image2D clInImg(clCtx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, pixels.data(), &clError);
 	Logger::logOpenClError(clError, "create OpenCL image from png");
 	error_quit_program(clError);
 
+	// create OpenCL image for the preprocessed data
 	const unsigned outWidth = width / 4;
 	const unsigned outHeight = height / 4;
-	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
-	Logger::logOpenClError(clError, "create OpenCL image for output");
+	cl::Image2D clPrepImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
+	Logger::logOpenClError(clError, "create OpenCL image for preprocess");
 	error_quit_program(clError);
 
+	// run preprocess kernel
 	auto programText = readFile("preprocess.cl");
-	cl::Program program(clCtx, programText);
-	clError = program.build();
+	cl::Program prepProgram(clCtx, programText);
+	clError = prepProgram.build();
 	Logger::logOpenClError(clError, "build preprocess cl program");
 	error_quit_program(clError);
 
-	cl::Kernel kernel(program, "preprocess", &clError);
+	cl::Kernel preprocessKernel(prepProgram, "preprocess", &clError);
 	Logger::logOpenClError(clError, "initialize cl kernel");
 	error_quit_program(clError);
 
-	kernel.setArg(0, clInImg);
-    kernel.setArg(1, clOutImg);
-	cl::CommandQueue queue(clCtx);
+	preprocessKernel.setArg(0, clInImg);
+    preprocessKernel.setArg(1, clPrepImg);
 	Logger::startProgress("running preprocess kernel");
-    clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-	Logger::logOpenClError(clError, "add kernel to command queue");
+    clError = queue.enqueueNDRangeKernel(preprocessKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
+	Logger::logOpenClError(clError, "add preprocessKernel to command queue");
 	error_quit_program(clError);
 	queue.finish();
 	Logger::endProgress();
 
-	std::vector<float> processedImage(pixels.size());
+	// create OpenCL image for mean data
+	cl::Image2D clMeansImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
+	Logger::logOpenClError(clError, "create OpenCL image for mean data");
+	error_quit_program(clError);
+
+	// run mean kernel
+	programText = readFile("mean.cl");
+	cl::Program meanProgram(clCtx, programText);
+	clError = meanProgram.build();
+	Logger::logOpenClError(clError, "build mean cl program");
+	error_quit_program(clError);
+
+	cl::Kernel meanKernel(meanProgram, "mean", &clError);
+	Logger::logOpenClError(clError, "initialize cl kernel");
+	error_quit_program(clError);
+
+	meanKernel.setArg(0, clPrepImg);
+	meanKernel.setArg(1, clMeansImg);
+	meanKernel.setArg(2, WINDOW);
+	Logger::startProgress("running mean kernel");
+    clError = queue.enqueueNDRangeKernel(meanKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
+	Logger::logOpenClError(clError, "add meanKernel to command queue");
+	error_quit_program(clError);
+	queue.finish();
+	Logger::endProgress();
+
+	std::vector<float> processedImage(outWidth * outHeight);
 	cl::size_t<3> size;
 	size[0] = outWidth;
 	size[1] = outHeight;
 	size[2] = 1;
-	clError = queue.enqueueReadImage(clOutImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
+	clError = queue.enqueueReadImage(clMeansImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	Logger::logOpenClError(clError, "read computed image");
 	error_quit_program(clError);
     queue.finish();
