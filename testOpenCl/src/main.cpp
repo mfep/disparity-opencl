@@ -186,37 +186,59 @@ int main() {
 	auto clPrepImg = createGrayClImage(clCtx, outWidth, outHeight);
 
 	// run preprocess kernel
-	auto preprocessKernel = loadKernel(clCtx, "preprocess.cl", "preprocess");
-	preprocessKernel.setArg(0, clInImg);
-    preprocessKernel.setArg(1, clPrepImg);
-	Logger::startProgress("running preprocess kernel");
-    clError = queue.enqueueNDRangeKernel(preprocessKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-	Logger::logOpenClError(clError, "add preprocessKernel to command queue");
-	error_quit_program(clError);
-	queue.finish();
-	Logger::endProgress();
+	{
+		auto preprocessKernel = loadKernel(clCtx, "preprocess.cl", "preprocess");
+		preprocessKernel.setArg(0, clInImg);
+		preprocessKernel.setArg(1, clPrepImg);
+		Logger::startProgress("running preprocess kernel");
+		clError = queue.enqueueNDRangeKernel(preprocessKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
+		Logger::logOpenClError(clError, "add preprocessKernel to command queue");
+		error_quit_program(clError);
+		queue.finish();
+		Logger::endProgress();
+	}
 
 	// create OpenCL image for mean data
 	auto clMeansImg = createGrayClImage(clCtx, outWidth, outHeight);
 
 	// run mean kernel
-	auto meanKernel = loadKernel(clCtx, "mean.cl", "mean");
-	meanKernel.setArg(0, clPrepImg);
-	meanKernel.setArg(1, clMeansImg);
-	meanKernel.setArg(2, WINDOW);
-	Logger::startProgress("running mean kernel");
-    clError = queue.enqueueNDRangeKernel(meanKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-	Logger::logOpenClError(clError, "add meanKernel to command queue");
-	error_quit_program(clError);
-	queue.finish();
-	Logger::endProgress();
+	{
+		auto meanKernel = loadKernel(clCtx, "mean.cl", "mean");
+		meanKernel.setArg(0, clPrepImg);
+		meanKernel.setArg(1, clMeansImg);
+		meanKernel.setArg(2, WINDOW);
+		Logger::startProgress("running mean kernel");
+		clError = queue.enqueueNDRangeKernel(meanKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
+		Logger::logOpenClError(clError, "add meanKernel to command queue");
+		error_quit_program(clError);
+		queue.finish();
+		Logger::endProgress();
+	}
+
+	// create OpenCL image for std data
+	auto clStdImg = createGrayClImage(clCtx, outWidth, outHeight);
+
+	// run stdDev kernel
+	{
+		auto stdDevKernel = loadKernel(clCtx, "std_dev.cl", "stdDev");
+		stdDevKernel.setArg(0, clPrepImg);
+		stdDevKernel.setArg(1, clMeansImg);
+		stdDevKernel.setArg(2, clStdImg);
+		stdDevKernel.setArg(3, WINDOW);
+		Logger::startProgress("running stdDev kernel");
+		clError = queue.enqueueNDRangeKernel(stdDevKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
+		Logger::logOpenClError(clError, "add stdDev kernel to command queue");
+		error_quit_program(clError);
+		queue.finish();
+		Logger::endProgress();
+	}
 
 	std::vector<float> processedImage(outWidth * outHeight);
 	cl::size_t<3> size;
 	size[0] = outWidth;
 	size[1] = outHeight;
 	size[2] = 1;
-	clError = queue.enqueueReadImage(clMeansImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
+	clError = queue.enqueueReadImage(clStdImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	Logger::logOpenClError(clError, "read computed image");
 	error_quit_program(clError);
     queue.finish();
