@@ -5,6 +5,7 @@
 #include <streambuf>
 #include "CL/cl.hpp"
 #include "lodepng.h"
+#include "Logger.hpp"
 
 
 void testCl() {
@@ -123,56 +124,53 @@ std::string readFile(const char* filename) {
 }
 
 
+template<typename T>
+void error_quit_program(T error) {
+	if (error != 0) {
+		getchar();
+		exit(1);
+	}
+}
+
+
 int main() {
 	std::vector<uint8_t> pixels;
 	unsigned width, height;
 	unsigned error = lodepng::decode(pixels, width, height, "im0.png", LCT_RGBA);
-	if (error != 0) {
-		std::cout << "cannot read in im0.png" << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logLoad(error, "im0.png");
+	error_quit_program(error);
+
 	auto clCtx = initCl();
 	int clError = 0;
 	cl::Image2D clInImg(clCtx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, pixels.data(), &clError);
-	if (clError != 0) {
-		std::cout << "could not create openCL image from png error: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "create OpenCL image from png");
+	error_quit_program(clError);
+
 	const unsigned outWidth = width / 4;
 	const unsigned outHeight = height / 4;
 	cl::Image2D clOutImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
-	if (clError != 0) {
-		std::cout << "could not create openCL image for output error: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "create OpenCL image for output");
+	error_quit_program(clError);
 
 	auto programText = readFile("preprocess.cl");
 	cl::Program program(clCtx, programText);
 	clError = program.build();
-	if (clError != 0) {
-		std::cout << "could not build clProgram: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "build preprocess cl program");
+	error_quit_program(clError);
+
 	cl::Kernel kernel(program, "preprocess", &clError);
-	if (clError != 0) {
-		std::cout << "initialize cl::Kernel: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "initialize cl kernel");
+	error_quit_program(clError);
+
 	kernel.setArg(0, clInImg);
     kernel.setArg(1, clOutImg);
 	cl::CommandQueue queue(clCtx);
+	Logger::startProgress("running preprocess kernel");
     clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-	if (clError != 0) {
-		std::cout << "cannot add kernel to command queue: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "add kernel to command queue");
+	error_quit_program(clError);
 	queue.finish();
+	Logger::endProgress();
 
 	std::vector<float> processedImage(pixels.size());
 	cl::size_t<3> size;
@@ -180,11 +178,8 @@ int main() {
 	size[1] = outHeight;
 	size[2] = 1;
 	clError = queue.enqueueReadImage(clOutImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
-	if (clError != 0) {
-		std::cout << "cannot read computed image: " << clError << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logOpenClError(clError, "read computed image");
+	error_quit_program(clError);
     queue.finish();
 
 	std::vector<uint8_t> outputImage(processedImage.size());
@@ -193,10 +188,7 @@ int main() {
 	}
 
 	error = lodepng::encode("out.png", outputImage, outWidth, outHeight, LCT_GREY, 8);
-	if (error != 0) {
-		std::cout << "cannot save image file" << std::endl;
-		getchar();
-		exit(1);
-	}
+	Logger::logSave(error, "out.png");
+	getchar();
     return 0;
 }

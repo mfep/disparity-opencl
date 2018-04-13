@@ -32,6 +32,11 @@ public:
     /// Logs a message about a process end, also an execution time since `startProgress`.
     static void endProgress     ();
 
+	/// Logs a message about an openCL call's error response.
+	/// \param error OpenCL error code.
+	/// \param message message to print
+	static void logOpenClError	(int error, const char* message);
+
 private:
     static int m_lastBars;
     static const char* m_progressText;
