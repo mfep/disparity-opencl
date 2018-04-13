@@ -10,6 +10,7 @@
 
 constexpr int WINDOW = 9;
 
+namespace {
 
 void testCl() {
 	//get all platforms (drivers)
@@ -136,6 +137,22 @@ void error_quit_program(T error) {
 }
 
 
+cl::Kernel loadKernel(const cl::Context& clCtx, const char* filename, const char* kernelname) {
+	auto programText = readFile(filename);
+	cl::Program prepProgram(clCtx, programText);
+	int clError = prepProgram.build();
+	Logger::logOpenClError(clError, "build preprocess cl program");
+	error_quit_program(clError);
+
+	cl::Kernel kernel(prepProgram, kernelname, &clError);
+	Logger::logOpenClError(clError, filename);
+	error_quit_program(clError);
+	return kernel;
+}
+
+}	// namespace
+
+
 int main() {
 	// load input image
 	std::vector<uint8_t> pixels;
@@ -144,10 +161,12 @@ int main() {
 	Logger::logLoad(error, "im0.png");
 	error_quit_program(error);
 
-	// create OpenCL image from input image
+	// initialize OpenCL
 	auto clCtx = initCl();
 	cl::CommandQueue queue(clCtx);
 	int clError = 0;
+
+	// create input OpenCL image
 	cl::Image2D clInImg(clCtx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, pixels.data(), &clError);
 	Logger::logOpenClError(clError, "create OpenCL image from png");
 	error_quit_program(clError);
@@ -160,16 +179,7 @@ int main() {
 	error_quit_program(clError);
 
 	// run preprocess kernel
-	auto programText = readFile("preprocess.cl");
-	cl::Program prepProgram(clCtx, programText);
-	clError = prepProgram.build();
-	Logger::logOpenClError(clError, "build preprocess cl program");
-	error_quit_program(clError);
-
-	cl::Kernel preprocessKernel(prepProgram, "preprocess", &clError);
-	Logger::logOpenClError(clError, "initialize cl kernel");
-	error_quit_program(clError);
-
+	auto preprocessKernel = loadKernel(clCtx, "preprocess.cl", "preprocess");
 	preprocessKernel.setArg(0, clInImg);
     preprocessKernel.setArg(1, clPrepImg);
 	Logger::startProgress("running preprocess kernel");
@@ -185,16 +195,7 @@ int main() {
 	error_quit_program(clError);
 
 	// run mean kernel
-	programText = readFile("mean.cl");
-	cl::Program meanProgram(clCtx, programText);
-	clError = meanProgram.build();
-	Logger::logOpenClError(clError, "build mean cl program");
-	error_quit_program(clError);
-
-	cl::Kernel meanKernel(meanProgram, "mean", &clError);
-	Logger::logOpenClError(clError, "initialize cl kernel");
-	error_quit_program(clError);
-
+	auto meanKernel = loadKernel(clCtx, "mean.cl", "mean");
 	meanKernel.setArg(0, clPrepImg);
 	meanKernel.setArg(1, clMeansImg);
 	meanKernel.setArg(2, WINDOW);
