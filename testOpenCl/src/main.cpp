@@ -150,6 +150,15 @@ cl::Kernel loadKernel(const cl::Context& clCtx, const char* filename, const char
 	return kernel;
 }
 
+
+cl::Image2D createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned height) {
+	int clError = 0;
+	cl::Image2D clImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), width, height, 0, nullptr, &clError);
+	Logger::logOpenClError(clError, "create OpenCL image for preprocess");
+	error_quit_program(clError);
+	return clImg;
+}
+
 }	// namespace
 
 
@@ -174,9 +183,7 @@ int main() {
 	// create OpenCL image for the preprocessed data
 	const unsigned outWidth = width / 4;
 	const unsigned outHeight = height / 4;
-	cl::Image2D clPrepImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
-	Logger::logOpenClError(clError, "create OpenCL image for preprocess");
-	error_quit_program(clError);
+	auto clPrepImg = createGrayClImage(clCtx, outWidth, outHeight);
 
 	// run preprocess kernel
 	auto preprocessKernel = loadKernel(clCtx, "preprocess.cl", "preprocess");
@@ -190,9 +197,7 @@ int main() {
 	Logger::endProgress();
 
 	// create OpenCL image for mean data
-	cl::Image2D clMeansImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, CL_FLOAT), outWidth, outHeight, 0, nullptr, &clError);
-	Logger::logOpenClError(clError, "create OpenCL image for mean data");
-	error_quit_program(clError);
+	auto clMeansImg = createGrayClImage(clCtx, outWidth, outHeight);
 
 	// run mean kernel
 	auto meanKernel = loadKernel(clCtx, "mean.cl", "mean");
