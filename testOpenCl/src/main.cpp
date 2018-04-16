@@ -10,6 +10,7 @@
 
 constexpr int WINDOW = 9;
 
+
 namespace {
 
 void testCl() {
@@ -169,21 +170,23 @@ void runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl
 		Logger::endProgress();
 }
 
-}	// namespace
 
+struct PrecalcImage {
+	const unsigned width, height;
+	cl::Image2D grayImg;
+	cl::Image2D means;
+	cl::Image2D stdDev;
+};
 
-int main() {
+PrecalcImage loadAndPrecalcImage(const cl::Context& clCtx, const cl::CommandQueue& queue, const char* filename) {
+	int clError = 0;
+
 	// load input image
 	std::vector<uint8_t> pixels;
 	unsigned width, height;
-	unsigned error = lodepng::decode(pixels, width, height, "im0.png", LCT_RGBA);
-	Logger::logLoad(error, "im0.png");
+	unsigned error = lodepng::decode(pixels, width, height, filename, LCT_RGBA);
+	Logger::logLoad(error, filename);
 	error_quit_program(error);
-
-	// initialize OpenCL
-	auto clCtx = initCl();
-	cl::CommandQueue queue(clCtx);
-	int clError = 0;
 
 	// create input OpenCL image
 	cl::Image2D clInImg(clCtx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, pixels.data(), &clError);
@@ -228,12 +231,27 @@ int main() {
 		runKernel(queue, stdDevKernel, cl::NDRange(outWidth, outHeight), "std dev kernel");
 	}
 
-	std::vector<float> processedImage(outWidth * outHeight);
+	// assemble output
+	return {outWidth, outHeight, clInImg, clMeansImg, clStdImg};
+}
+
+}	// namespace
+
+
+int main() {
+	// initialize OpenCL
+	int clError = 0;
+	auto clCtx = initCl();
+	cl::CommandQueue queue(clCtx);
+
+	auto imData = loadAndPrecalcImage(clCtx, queue, "im0.png");
+
+	std::vector<float> processedImage(imData.width * imData.height);
 	cl::size_t<3> size;
-	size[0] = outWidth;
-	size[1] = outHeight;
+	size[0] = imData.width;
+	size[1] = imData.height;
 	size[2] = 1;
-	clError = queue.enqueueReadImage(clStdImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
+	clError = queue.enqueueReadImage(imData.means, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	Logger::logOpenClError(clError, "read computed image");
 	error_quit_program(clError);
     queue.finish();
@@ -243,7 +261,7 @@ int main() {
 		outputImage[i] = static_cast<uint8_t>(processedImage[i]);
 	}
 
-	error = lodepng::encode("out.png", outputImage, outWidth, outHeight, LCT_GREY, 8);
+	unsigned error = lodepng::encode("out.png", outputImage, imData.width, imData.height, LCT_GREY, 8);
 	Logger::logSave(error, "out.png");
 	getchar();
     return 0;
