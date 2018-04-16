@@ -159,6 +159,16 @@ cl::Image2D createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned
 	return clImg;
 }
 
+
+void runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname) {
+		Logger::startProgress(progressname);
+		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, cl::NullRange);
+		Logger::logOpenClError(clError, "add kernel to command queue");
+		error_quit_program(clError);
+		queue.finish();
+		Logger::endProgress();
+}
+
 }	// namespace
 
 
@@ -190,12 +200,7 @@ int main() {
 		auto preprocessKernel = loadKernel(clCtx, "preprocess.cl", "preprocess");
 		preprocessKernel.setArg(0, clInImg);
 		preprocessKernel.setArg(1, clPrepImg);
-		Logger::startProgress("running preprocess kernel");
-		clError = queue.enqueueNDRangeKernel(preprocessKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-		Logger::logOpenClError(clError, "add preprocessKernel to command queue");
-		error_quit_program(clError);
-		queue.finish();
-		Logger::endProgress();
+		runKernel(queue, preprocessKernel, cl::NDRange(outWidth, outHeight), "preprocess kernel");
 	}
 
 	// create OpenCL image for mean data
@@ -207,12 +212,7 @@ int main() {
 		meanKernel.setArg(0, clPrepImg);
 		meanKernel.setArg(1, clMeansImg);
 		meanKernel.setArg(2, WINDOW);
-		Logger::startProgress("running mean kernel");
-		clError = queue.enqueueNDRangeKernel(meanKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-		Logger::logOpenClError(clError, "add meanKernel to command queue");
-		error_quit_program(clError);
-		queue.finish();
-		Logger::endProgress();
+		runKernel(queue, meanKernel, cl::NDRange(outWidth, outHeight), "mean kernel");
 	}
 
 	// create OpenCL image for std data
@@ -225,12 +225,7 @@ int main() {
 		stdDevKernel.setArg(1, clMeansImg);
 		stdDevKernel.setArg(2, clStdImg);
 		stdDevKernel.setArg(3, WINDOW);
-		Logger::startProgress("running stdDev kernel");
-		clError = queue.enqueueNDRangeKernel(stdDevKernel, cl::NullRange, cl::NDRange(outWidth, outHeight), cl::NullRange);
-		Logger::logOpenClError(clError, "add stdDev kernel to command queue");
-		error_quit_program(clError);
-		queue.finish();
-		Logger::endProgress();
+		runKernel(queue, stdDevKernel, cl::NDRange(outWidth, outHeight), "std dev kernel");
 	}
 
 	std::vector<float> processedImage(outWidth * outHeight);
