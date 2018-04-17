@@ -195,12 +195,15 @@
     <ClCompile Include="src\PixelUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="copyImg.cl">
+    <Intel_OpenCL_Build_Rules Include="copyImg.cl">
       <FileType>Document</FileType>
-    </None>
-    <None Include="preprocess.cl">
+    </Intel_OpenCL_Build_Rules>
+    <Intel_OpenCL_Build_Rules Include="disparity.cl" />
+    <Intel_OpenCL_Build_Rules Include="mean.cl" />
+    <Intel_OpenCL_Build_Rules Include="preprocess.cl">
       <FileType>Document</FileType>
-    </None>
+    </Intel_OpenCL_Build_Rules>
+    <Intel_OpenCL_Build_Rules Include="std_dev.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
