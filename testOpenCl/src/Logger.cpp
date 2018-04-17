@@ -119,7 +119,7 @@ void Logger::logSave(unsigned code, const char *filename) {
 
 void Logger::startProgress(const char* text) {
     m_progressText = text;
-    std::cout << "=== starting " << text << std::endl;
+    std::cout << std::endl << "=== starting " << text << std::endl;
     m_startTime = std::chrono::system_clock::now();
 }
 
@@ -156,5 +156,7 @@ void Logger::endProgress() {
 
 
 void Logger::logOpenClError(int error, const char* message) {
-	std::cout << "OpenCL procedure: " << message << " returned: " << error << " : " << getErrorString(error) << std::endl;
+	if (error) {
+		std::cout << "OpenCL procedure: " << message << " returned: " << error << " : " << getErrorString(error) << std::endl;
+	}
 }

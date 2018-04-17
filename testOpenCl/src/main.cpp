@@ -174,6 +174,15 @@ void runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl
 }
 
 
+std::vector<uint8_t> loadImage(const char* filename, unsigned& width, unsigned& height) {
+	std::vector<uint8_t> pixels;
+	unsigned error = lodepng::decode(pixels, width, height, filename, LCT_RGBA);
+	Logger::logLoad(error, filename);
+	error_quit_program(error);
+	return pixels;
+}
+
+
 struct PrecalcImage {
 	const unsigned width, height;
 	cl::Image2D grayImg;
@@ -181,15 +190,8 @@ struct PrecalcImage {
 	cl::Image2D stdDev;
 };
 
-PrecalcImage loadAndPrecalcImage(const cl::Context& clCtx, const cl::CommandQueue& queue, const char* filename) {
+PrecalcImage precalcImage(const cl::Context& clCtx, const cl::CommandQueue& queue, std::vector<uint8_t>& pixels, unsigned width, unsigned height) {
 	int clError = 0;
-
-	// load input image
-	std::vector<uint8_t> pixels;
-	unsigned width, height;
-	unsigned error = lodepng::decode(pixels, width, height, filename, LCT_RGBA);
-	Logger::logLoad(error, filename);
-	error_quit_program(error);
 
 	// create input OpenCL image
 	cl::Image2D clInImg(clCtx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, cl::ImageFormat(CL_RGBA, CL_UNSIGNED_INT8), width, height, 0, pixels.data(), &clError);
@@ -267,9 +269,18 @@ int main() {
 	auto clCtx = initCl();
 	cl::CommandQueue queue(clCtx);
 
-	// load and calculate image mean&stddev
-	auto imDataL = loadAndPrecalcImage(clCtx, queue, "im0.png");
-	auto imDataR = loadAndPrecalcImage(clCtx, queue, "im1.png");
+	// load images
+	unsigned widthL, heightL, widthR, heightR;
+	auto pixelsL = loadImage("im0.png", widthL, heightL);
+	auto pixelsR = loadImage("im1.png", widthR, heightR);
+	if (widthL != widthR || heightL != heightR) {
+		std::cout << "input image dimensions should match" << std::endl;
+		error_quit_program(1);
+	}
+
+	// calculate image mean&stddev
+	auto imDataL = precalcImage(clCtx, queue, pixelsL, widthL, heightL);
+	auto imDataR = precalcImage(clCtx, queue, pixelsR, widthL, heightL);
 
 	// calculate disparity maps + normalize
 	auto dispL = calculateDisparityMap(clCtx, queue, imDataL, imDataR, false);
