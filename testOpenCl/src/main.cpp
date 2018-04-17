@@ -10,6 +10,7 @@
 
 constexpr int WINDOW = 9;
 constexpr int MAX_DISP = 260 / 4;
+constexpr int CROSS_TH = 8;
 
 
 namespace {
@@ -155,7 +156,7 @@ cl::Kernel loadKernel(const cl::Context& clCtx, const char* filename, const char
 
 cl::Image2D createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned height, cl_channel_type channelType = CL_FLOAT) {
 	int clError = 0;
-	cl::Image2D clImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_LUMINANCE, channelType), width, height, 0, nullptr, &clError);
+	cl::Image2D clImg(clCtx, CL_MEM_READ_WRITE, cl::ImageFormat(CL_R, channelType), width, height, 0, nullptr, &clError);
 	Logger::logOpenClError(clError, "create OpenCL image");
 	error_quit_program(clError);
 	return clImg;
@@ -236,6 +237,26 @@ PrecalcImage loadAndPrecalcImage(const cl::Context& clCtx, const cl::CommandQueu
 	return {outWidth, outHeight, clPrepImg, clMeansImg, clStdImg};
 }
 
+
+cl::Image2D calculateDisparityMap(const cl::Context& clCtx, const cl::CommandQueue& queue, const PrecalcImage& left, const PrecalcImage& right, bool invertD) {
+	auto outImg = createGrayClImage(clCtx, left.width, left.height, CL_UNSIGNED_INT8);
+	{
+		auto dispKernel = loadKernel(clCtx, "disparity.cl", "disparity");
+		dispKernel.setArg(0, outImg);
+		dispKernel.setArg(1, left.grayImg);
+		dispKernel.setArg(2, right.grayImg);
+		dispKernel.setArg(3, left.means);
+		dispKernel.setArg(4, right.means);
+		dispKernel.setArg(5, left.stdDev);
+		dispKernel.setArg(6, right.stdDev);
+		dispKernel.setArg(7, invertD ? 1 : 0);
+		dispKernel.setArg(8, WINDOW);
+		dispKernel.setArg(9, MAX_DISP);
+		runKernel(queue, dispKernel, cl::NDRange(left.width, left.height), "disparity kernel");
+	}
+	return outImg;
+}
+
 }	// namespace
 
 
@@ -249,38 +270,32 @@ int main() {
 	auto imDataL = loadAndPrecalcImage(clCtx, queue, "im0.png");
 	auto imDataR = loadAndPrecalcImage(clCtx, queue, "im1.png");
 
-	// calculate disparity map
-	auto outImg = createGrayClImage(clCtx, imDataL.width, imDataL.height);
+	// calculate disparity maps
+	auto dispL = calculateDisparityMap(clCtx, queue, imDataL, imDataR, false);
+	auto dispR = calculateDisparityMap(clCtx, queue, imDataR, imDataL, true);
+
+	// cross-check
+	auto crossCheckImg = createGrayClImage(clCtx, imDataL.width, imDataL.height, CL_UNSIGNED_INT8);
 	{
-		auto dispKernel = loadKernel(clCtx, "disparity.cl", "disparity");
-		dispKernel.setArg(0, outImg);
-		dispKernel.setArg(1, imDataL.grayImg);
-		dispKernel.setArg(2, imDataR.grayImg);
-		dispKernel.setArg(3, imDataL.means);
-		dispKernel.setArg(4, imDataR.means);
-		dispKernel.setArg(5, imDataL.stdDev);
-		dispKernel.setArg(6, imDataR.stdDev);
-		dispKernel.setArg(7, WINDOW);
-		dispKernel.setArg(8, MAX_DISP);
-		runKernel(queue, dispKernel, cl::NDRange(imDataL.width, imDataL.height), "disparity kernel");
+		auto crossCheckKernel = loadKernel(clCtx, "crossCheck.cl", "crossCheck");
+		crossCheckKernel.setArg(0, crossCheckImg);
+		crossCheckKernel.setArg(1, dispL);
+		crossCheckKernel.setArg(2, dispR);
+		crossCheckKernel.setArg(3, CROSS_TH);
+		runKernel(queue, crossCheckKernel, cl::NDRange(imDataL.width, imDataL.height), "cross check kernel");
 	}
 
-	std::vector<float> processedImage(imDataL.width * imDataL.height);
+	std::vector<uint8_t> processedImage(imDataL.width * imDataL.height);
 	cl::size_t<3> size;
 	size[0] = imDataL.width;
 	size[1] = imDataL.height;
 	size[2] = 1;
-	clError = queue.enqueueReadImage(outImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
+	clError = queue.enqueueReadImage(crossCheckImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	Logger::logOpenClError(clError, "read computed image");
 	error_quit_program(clError);
     queue.finish();
 
-	std::vector<uint8_t> outputImage(processedImage.size());
-	for (size_t i = 0; i < processedImage.size(); i++) {
-		outputImage[i] = static_cast<uint8_t>(processedImage[i]/* * 255.f / MAX_DISP*/);
-	}
-
-	unsigned error = lodepng::encode("out.png", outputImage, imDataL.width, imDataL.height, LCT_GREY, 8);
+	unsigned error = lodepng::encode("out.png", processedImage, imDataL.width, imDataL.height, LCT_GREY, 8);
 	Logger::logSave(error, "out.png");
 	getchar();
     return 0;
