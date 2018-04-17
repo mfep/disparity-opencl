@@ -256,12 +256,12 @@ int main() {
 		dispKernel.setArg(0, outImg);
 		dispKernel.setArg(1, imDataL.grayImg);
 		dispKernel.setArg(2, imDataR.grayImg);
-		//dispKernel.setArg(3, imDataL.means);
-		//dispKernel.setArg(4, imDataR.means);
-		//dispKernel.setArg(5, imDataL.stdDev);
-		//dispKernel.setArg(6, imDataR.stdDev);
-		//dispKernel.setArg(7, WINDOW);
-		//dispKernel.setArg(8, MAX_DISP);
+		dispKernel.setArg(3, imDataL.means);
+		dispKernel.setArg(4, imDataR.means);
+		dispKernel.setArg(5, imDataL.stdDev);
+		dispKernel.setArg(6, imDataR.stdDev);
+		dispKernel.setArg(7, WINDOW);
+		dispKernel.setArg(8, MAX_DISP);
 		runKernel(queue, dispKernel, cl::NDRange(imDataL.width, imDataL.height), "disparity kernel");
 	}
 
