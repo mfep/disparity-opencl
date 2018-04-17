@@ -11,6 +11,7 @@
 constexpr int WINDOW = 9;
 constexpr int MAX_DISP = 260 / 4;
 constexpr int CROSS_TH = 8;
+constexpr int MAX_OFFSET = 50;
 
 
 namespace {
@@ -270,7 +271,7 @@ int main() {
 	auto imDataL = loadAndPrecalcImage(clCtx, queue, "im0.png");
 	auto imDataR = loadAndPrecalcImage(clCtx, queue, "im1.png");
 
-	// calculate disparity maps
+	// calculate disparity maps + normalize
 	auto dispL = calculateDisparityMap(clCtx, queue, imDataL, imDataR, false);
 	auto dispR = calculateDisparityMap(clCtx, queue, imDataR, imDataL, true);
 
@@ -285,12 +286,23 @@ int main() {
 		runKernel(queue, crossCheckKernel, cl::NDRange(imDataL.width, imDataL.height), "cross check kernel");
 	}
 
+	// postprocess (occlusion fill)
+	auto outImg = createGrayClImage(clCtx, imDataL.width, imDataL.height, CL_UNSIGNED_INT8);
+	{
+		auto postKernel = loadKernel(clCtx, "occlusionFill.cl", "occlusionFill");
+		postKernel.setArg(0, outImg);
+		postKernel.setArg(1, crossCheckImg);
+		postKernel.setArg(2, MAX_OFFSET);
+		runKernel(queue, postKernel, cl::NDRange(imDataL.width, imDataL.height), "occlusionFill kernel");
+	}
+
+	// save output image
 	std::vector<uint8_t> processedImage(imDataL.width * imDataL.height);
 	cl::size_t<3> size;
 	size[0] = imDataL.width;
 	size[1] = imDataL.height;
 	size[2] = 1;
-	clError = queue.enqueueReadImage(crossCheckImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
+	clError = queue.enqueueReadImage(outImg, CL_TRUE, cl::size_t<3>(), size, 0, 0, processedImage.data());
 	Logger::logOpenClError(clError, "read computed image");
 	error_quit_program(clError);
     queue.finish();

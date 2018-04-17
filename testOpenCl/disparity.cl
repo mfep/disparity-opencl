@@ -59,5 +59,5 @@ __kernel void disparity(
 			bestDisp = disp;
 		}
 	}
-	write_imageui(output, (int2)(cx, cy), bestDisp);
+	write_imageui(output, (int2)(cx, cy), convert_uint((float)bestDisp / maxDisp * 255.f));
 }

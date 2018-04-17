@@ -201,6 +201,7 @@
     <Intel_OpenCL_Build_Rules Include="crossCheck.cl" />
     <Intel_OpenCL_Build_Rules Include="disparity.cl" />
     <Intel_OpenCL_Build_Rules Include="mean.cl" />
+    <Intel_OpenCL_Build_Rules Include="occlusionFill.cl" />
     <Intel_OpenCL_Build_Rules Include="preprocess.cl">
       <FileType>Document</FileType>
     </Intel_OpenCL_Build_Rules>
