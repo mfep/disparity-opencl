@@ -289,11 +289,11 @@ int main() {
 	// postprocess (occlusion fill)
 	auto outImg = createGrayClImage(clCtx, imDataL.width, imDataL.height, CL_UNSIGNED_INT8);
 	{
-		auto postKernel = loadKernel(clCtx, "occlusionFill.cl", "occlusionFill");
-		postKernel.setArg(0, outImg);
-		postKernel.setArg(1, crossCheckImg);
-		postKernel.setArg(2, MAX_OFFSET);
-		runKernel(queue, postKernel, cl::NDRange(imDataL.width, imDataL.height), "occlusionFill kernel");
+		auto occlusionKernel = loadKernel(clCtx, "occlusionFill.cl", "occlusionFill");
+		occlusionKernel.setArg(0, outImg);
+		occlusionKernel.setArg(1, crossCheckImg);
+		occlusionKernel.setArg(2, MAX_OFFSET);
+		runKernel(queue, occlusionKernel, cl::NDRange(imDataL.width, imDataL.height), "occlusionFill kernel");
 	}
 
 	// save output image
