@@ -8,12 +8,6 @@
 #include "Logger.hpp"
 
 
-constexpr int WINDOW = 9;
-constexpr int MAX_DISP = 260 / 4;
-constexpr int CROSS_TH = 8;
-constexpr int MAX_OFFSET = 50;
-
-
 namespace {
 
 void testCl() {
@@ -166,7 +160,7 @@ cl::Image2D createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned
 
 void runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname) {
 		Logger::startProgress(progressname);
-		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, cl::NullRange);
+		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange);
 		Logger::logOpenClError(clError, "add kernel to command queue");
 		error_quit_program(clError);
 		queue.finish();
@@ -219,7 +213,6 @@ PrecalcImage precalcImage(const cl::Context& clCtx, const cl::CommandQueue& queu
 		auto meanKernel = loadKernel(clCtx, "mean.cl", "mean");
 		meanKernel.setArg(0, clPrepImg);
 		meanKernel.setArg(1, clMeansImg);
-		meanKernel.setArg(2, WINDOW);
 		runKernel(queue, meanKernel, cl::NDRange(outWidth, outHeight), "mean kernel");
 	}
 
@@ -232,7 +225,6 @@ PrecalcImage precalcImage(const cl::Context& clCtx, const cl::CommandQueue& queu
 		stdDevKernel.setArg(0, clPrepImg);
 		stdDevKernel.setArg(1, clMeansImg);
 		stdDevKernel.setArg(2, clStdImg);
-		stdDevKernel.setArg(3, WINDOW);
 		runKernel(queue, stdDevKernel, cl::NDRange(outWidth, outHeight), "std dev kernel");
 	}
 
@@ -253,8 +245,6 @@ cl::Image2D calculateDisparityMap(const cl::Context& clCtx, const cl::CommandQue
 		dispKernel.setArg(5, left.stdDev);
 		dispKernel.setArg(6, right.stdDev);
 		dispKernel.setArg(7, invertD ? 1 : 0);
-		dispKernel.setArg(8, WINDOW);
-		dispKernel.setArg(9, MAX_DISP);
 		runKernel(queue, dispKernel, cl::NDRange(left.width, left.height), "disparity kernel");
 	}
 	return outImg;
@@ -293,7 +283,6 @@ int main() {
 		crossCheckKernel.setArg(0, crossCheckImg);
 		crossCheckKernel.setArg(1, dispL);
 		crossCheckKernel.setArg(2, dispR);
-		crossCheckKernel.setArg(3, CROSS_TH);
 		runKernel(queue, crossCheckKernel, cl::NDRange(imDataL.width, imDataL.height), "cross check kernel");
 	}
 
@@ -303,7 +292,6 @@ int main() {
 		auto occlusionKernel = loadKernel(clCtx, "occlusionFill.cl", "occlusionFill");
 		occlusionKernel.setArg(0, outImg);
 		occlusionKernel.setArg(1, crossCheckImg);
-		occlusionKernel.setArg(2, MAX_OFFSET);
 		runKernel(queue, occlusionKernel, cl::NDRange(imDataL.width, imDataL.height), "occlusionFill kernel");
 	}
 

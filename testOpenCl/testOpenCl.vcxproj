@@ -181,6 +181,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="clIncludes.h" />
     <ClInclude Include="inc\CliOptions.hpp" />
     <ClInclude Include="inc\cxxopts.hpp" />
     <ClInclude Include="inc\lodepng.h" />
