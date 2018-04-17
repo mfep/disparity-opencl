@@ -256,12 +256,12 @@ int main() {
 		dispKernel.setArg(0, outImg);
 		dispKernel.setArg(1, imDataL.grayImg);
 		dispKernel.setArg(2, imDataR.grayImg);
-		dispKernel.setArg(3, imDataL.means);
-		dispKernel.setArg(4, imDataR.means);
-		dispKernel.setArg(5, imDataL.stdDev);
-		dispKernel.setArg(6, imDataR.stdDev);
-		dispKernel.setArg(7, WINDOW);
-		dispKernel.setArg(8, MAX_DISP);
+		//dispKernel.setArg(3, imDataL.means);
+		//dispKernel.setArg(4, imDataR.means);
+		//dispKernel.setArg(5, imDataL.stdDev);
+		//dispKernel.setArg(6, imDataR.stdDev);
+		//dispKernel.setArg(7, WINDOW);
+		//dispKernel.setArg(8, MAX_DISP);
 		runKernel(queue, dispKernel, cl::NDRange(imDataL.width, imDataL.height), "disparity kernel");
 	}
 
@@ -277,7 +277,7 @@ int main() {
 
 	std::vector<uint8_t> outputImage(processedImage.size());
 	for (size_t i = 0; i < processedImage.size(); i++) {
-		outputImage[i] = static_cast<uint8_t>(processedImage[i] * 255.f / MAX_DISP);
+		outputImage[i] = static_cast<uint8_t>(processedImage[i]/* * 255.f / MAX_DISP*/);
 	}
 
 	unsigned error = lodepng::encode("out.png", outputImage, imDataL.width, imDataL.height, LCT_GREY, 8);
