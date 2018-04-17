@@ -139,7 +139,7 @@ cl::Kernel loadKernel(const cl::Context& clCtx, const char* filename, const char
 	auto programText = readFile(filename);
 	cl::Program prepProgram(clCtx, programText);
 	int clError = prepProgram.build();
-	Logger::logOpenClError(clError, "build preprocess cl program");
+	Logger::logOpenClError(clError, "build cl program");
 	error_quit_program(clError);
 
 	cl::Kernel kernel(prepProgram, kernelname, &clError);
