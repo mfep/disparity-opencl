@@ -159,12 +159,13 @@ cl::Image2D createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned
 
 
 void runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname) {
-		Logger::startProgress(progressname);
-		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange);
+		cl::Event ev;
+		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, cl::NullRange, nullptr, &ev);
 		Logger::logOpenClError(clError, "add kernel to command queue");
 		error_quit_program(clError);
 		queue.finish();
-		Logger::endProgress();
+		const cl_ulong duration = ev.getProfilingInfo<CL_PROFILING_COMMAND_END>() - ev.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+		std::cout << "OpenCL process: " << progressname << " finished in: " << duration / 1e6f << "ms" << std::endl;
 }
 
 
@@ -257,7 +258,7 @@ int main() {
 	// initialize OpenCL
 	int clError = 0;
 	auto clCtx = initCl();
-	cl::CommandQueue queue(clCtx);
+	cl::CommandQueue queue(clCtx, CL_QUEUE_PROFILING_ENABLE);
 
 	// load images
 	unsigned widthL, heightL, widthR, heightR;
