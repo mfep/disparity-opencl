@@ -182,18 +182,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="clIncludes.h" />
-    <ClInclude Include="inc\CliOptions.hpp" />
-    <ClInclude Include="inc\cxxopts.hpp" />
+    <ClInclude Include="inc\ClUtils.hpp" />
     <ClInclude Include="inc\lodepng.h" />
     <ClInclude Include="inc\Logger.hpp" />
-    <ClInclude Include="inc\PixelUtils.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CliOptions.cpp" />
+    <ClCompile Include="src\ClUtils.cpp" />
     <ClCompile Include="src\lodepng.cpp" />
     <ClCompile Include="src\Logger.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\PixelUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Intel_OpenCL_Build_Rules Include="copyImg.cl">

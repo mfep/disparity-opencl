@@ -15,39 +15,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="inc\CliOptions.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="inc\Logger.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\PixelUtils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inc\lodepng.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\cxxopts.hpp">
+    <ClInclude Include="clIncludes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="clIncludes.h">
+    <ClInclude Include="inc\ClUtils.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\CliOptions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\Logger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\PixelUtils.cpp">
+    <ClCompile Include="src\lodepng.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\lodepng.cpp">
+    <ClCompile Include="src\ClUtils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
