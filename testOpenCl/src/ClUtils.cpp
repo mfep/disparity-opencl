@@ -28,6 +28,12 @@ cl::Context ClUtils::initCl() {
     }
     cl::Device default_device=all_devices[0];
     std::cout<< "Using device: "<<default_device.getInfo<CL_DEVICE_NAME>()<<std::endl;
+	std::cout << "CL_DEVICE_LOCAL_MEM_TYPE: " << default_device.getInfo<CL_DEVICE_LOCAL_MEM_TYPE>() << std::endl;
+	std::cout << "CL_DEVICE_LOCAL_MEM_SIZE: " << default_device.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << std::endl;
+	std::cout << "CL_DEVICE_MAX_COMPUTE_UNITS: " << default_device.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << std::endl;
+	std::cout << "CL_DEVICE_MAX_CLOCK_FREQUENCY: " << default_device.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << std::endl;
+	std::cout << "CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE: " << default_device.getInfo<CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE>() << std::endl;
+	std::cout << "CL_DEVICE_MAX_WORK_GROUP_SIZE: " << default_device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>() << std::endl;
 	return cl::Context({default_device});
 }
 
