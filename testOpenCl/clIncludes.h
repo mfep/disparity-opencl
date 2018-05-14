@@ -3,3 +3,6 @@
 #define MAX_DISP 65
 #define CROSS_TH 8
 #define MAX_OFFSET 50
+
+#define GW 15
+#define GH 8

@@ -13,26 +13,52 @@ __kernel void disparity(
 	__read_only image2d_t leftMeans, __read_only image2d_t rightMeans,
 	__read_only image2d_t leftStd, __read_only image2d_t rightStd, int invertD)
 {
-	__private const int cx = get_global_id(0);
-	__private const int cy = get_global_id(1);
-	__private const float meanL = sample(leftMeans, cx, cy);
+	const int cx = get_global_id(0);
+	const int cy = get_global_id(1);
+	const int gx = get_local_id(0);
+	const int gy = get_local_id(1);
+	const float meanL = sample(leftMeans, cx, cy);
 
-	__private float bestZncc = 0.f;
-	__private int bestDisp = 0;
+	// cache left samples
+	const int bw = GW + 2 * D;
+	const int bh = GH + 2 * D;
+	__local float leftBuffer[bw*bh];
+	const int xiter = (bw - gx) / GW + 1;
+	const int yiter = (bh - gy) / GH + 1;
+	for (int j = 0; j < yiter; ++j) {
+		for (int i = 0; i < xiter; ++i) {
+			const int globalx = cx - D + i*GW;
+			const int globaly = cy - D + j*GH;
+			const float smpl = sample(left, globalx, globaly);
+
+			const int bufferx = gx + i*GW;
+			const int buffery = gy + j*GH;
+			const int bufferi = buffery * bw + bufferx;
+			leftBuffer[bufferi] = smpl;
+		}
+	}
+	
+	barrier(CLK_LOCAL_MEM_FENCE);
+
+	float bestZncc = 0.f;
+	int bestDisp = 0;
 	for (int disp = 0; disp < MAX_DISP; ++disp) {
-		__private const float d = invertD ? -disp : disp;
-		__private const float meanR = sample(rightMeans, cx - d, cy);
-		__private float sum = 0.f;
+		const float d = invertD ? -disp : disp;
+		const float meanR = sample(rightMeans, cx - d, cy);
+		float sum = 0.f;
 		for (int row = cy - D; row <= cy + D; ++row) {
 			for (int col = cx - D; col <= cx + D; ++col) {
-				sum += (sample(left, col, row) - meanL) * (sample(right, col - d, row) - meanR);
+				const int bufferx = col - cx + D + gx;
+				const int buffery = row - cy + D + gy;
+				const int bufferi = buffery * bw + bufferx;
+				sum += (leftBuffer[bufferi] - meanL) * (sample(right, col - d, row) - meanR);
 			}
 		}
-		__private const float zncc = sum / sample(leftStd, cx, cy) / sample(rightStd, cx - d, cy);
+		const float zncc = sum / sample(leftStd, cx, cy) / sample(rightStd, cx - d, cy);
 		if (zncc > bestZncc) {
 			bestZncc = zncc;
 			bestDisp = disp;
 		}
 	}
-	write_imageui(output, (int2)(cx, cy), convert_uint((float)bestDisp / MAX_DISP * 255.f));
+	write_imageui(output, (int2)(cx, cy), convert_uchar((float)bestDisp / MAX_DISP * 255.f));
 }

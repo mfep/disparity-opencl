@@ -95,7 +95,7 @@
       <Device>0</Device>
     </Intel_OpenCL_Build_Rules>
     <ClCompile>
-      <AdditionalIncludeDirectories>D:\Dev\oulu\testOpenCl\testOpenCl\inc;$(INTELOCLSDKROOT)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(PROJECTDIR);D:\Dev\oulu\testOpenCl\testOpenCl\inc;$(INTELOCLSDKROOT)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>Win32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -198,6 +198,7 @@
     </Intel_OpenCL_Build_Rules>
     <Intel_OpenCL_Build_Rules Include="crossCheck.cl" />
     <Intel_OpenCL_Build_Rules Include="disparity.cl" />
+    <Intel_OpenCL_Build_Rules Include="localTest.cl" />
     <Intel_OpenCL_Build_Rules Include="mean.cl" />
     <Intel_OpenCL_Build_Rules Include="occlusionFill.cl" />
     <Intel_OpenCL_Build_Rules Include="preprocess.cl">

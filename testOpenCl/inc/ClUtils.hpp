@@ -57,7 +57,7 @@ cl::Image2D	createGrayClImage(const cl::Context& clCtx, unsigned width, unsigned
 /// \param kernel The OpenCL kernel to use.
 /// \param globalRange The global NDRange to use for the kernel.
 /// \param progressname The string used in logging messages.
-void		runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname);
+void		runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname, const cl::NDRange& localRange = cl::NullRange);
 
 /// Decodes a png image on the disk and loads it to the memory.
 /// \param filename The path of the image file to load.

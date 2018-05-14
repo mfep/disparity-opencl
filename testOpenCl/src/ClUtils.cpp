@@ -6,6 +6,7 @@
 #include <streambuf>
 #include "Logger.hpp"
 #include "lodepng.h"
+#include "clIncludes.h"
 
 
 cl::Context ClUtils::initCl() {
@@ -75,9 +76,9 @@ cl::Image2D ClUtils::createGrayClImage(const cl::Context& clCtx, unsigned width,
 }
 
 
-void ClUtils::runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname) {
+void ClUtils::runKernel(const cl::CommandQueue& queue, const cl::Kernel& kernel, const cl::NDRange& globalRange, const char* progressname, const cl::NDRange& localRange) {
 		cl::Event ev;
-		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, cl::NullRange, nullptr, &ev);
+		int clError = queue.enqueueNDRangeKernel(kernel, cl::NullRange, globalRange, localRange, nullptr, &ev);
 		Logger::logOpenClError(clError, "add kernel to command queue");
 		error_quit_program(clError);
 		queue.finish();
@@ -156,7 +157,7 @@ cl::Image2D ClUtils::calculateDisparityMap(const cl::Context& clCtx, const cl::C
 		dispKernel.setArg(5, left.stdDev);
 		dispKernel.setArg(6, right.stdDev);
 		dispKernel.setArg(7, invertD ? 1 : 0);
-		runKernel(queue, dispKernel, cl::NDRange(left.width, left.height), "disparity kernel");
+		runKernel(queue, dispKernel, cl::NDRange(left.width, left.height), "disparity kernel", cl::NDRange(GW, GH));
 	}
 	return outImg;
 }
